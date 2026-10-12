@@ -1,0 +1,14 @@
+# Build output
+build/
+DerivedData/
+
+# FFmpeg binaries: rebuilt by Scripts/build-ffmpeg.sh
+Vendor/ffmpeg/
+
+# Local test files
+TestAudio/
+
+# Xcode / macOS
+xcuserdata/
+*.xcuserstate
+.DS_Store

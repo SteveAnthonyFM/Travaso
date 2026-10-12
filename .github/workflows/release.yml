@@ -1,0 +1,47 @@
+name: Release
+
+# Builds Travaso.dmg when a version tag such as v1.0.0 is pushed and attaches it to a
+# DRAFT GitHub release for review before publishing. The app is ad-hoc signed only
+# (not notarized); see the README for the first-launch steps.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  dmg:
+    runs-on: macos-26   # Travaso targets macOS 26; needs a runner with the macOS 26 SDK
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache FFmpeg build
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: Vendor/ffmpeg
+          key: ffmpeg-${{ hashFiles('Scripts/build-ffmpeg.sh') }}
+
+      - name: Build FFmpeg (LGPL, from official sources)
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        run: |
+          brew install pkgconf
+          ./Scripts/build-ffmpeg.sh
+
+      - name: Build Travaso
+        run: |
+          xcodebuild -project Travaso.xcodeproj -scheme Travaso -configuration Release \
+            -derivedDataPath build/DerivedData clean build -quiet
+
+      - name: Package DMG
+        run: ./Scripts/make-dmg.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: Travaso ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: build/Travaso-*.dmg
