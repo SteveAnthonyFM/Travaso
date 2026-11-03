@@ -7,6 +7,10 @@ struct TravasoApp: App {
     init() {
         // Dark mode only, including system dialogs and file pickers.
         NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        // Quitting mid-batch stops ffmpeg and removes its half-written temporary files.
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: nil) { _ in
+            ActiveWork.shared.terminateAll()
+        }
     }
 
     var body: some Scene {

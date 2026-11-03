@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — security hardening
+
+- Fixed: converting `Song.MP3` to MP3 on a case-insensitive disk could offer to overwrite the original itself. Source
+  files are now recognised by file identity, and an output name that matches any file in the batch is numbered.
+- The name-conflict question now defaults to **Keep Both** instead of **Overwrite**.
+- Numbers read from damaged or hostile files are range-checked, so they can't crash the app.
+- Only regular files are accepted from folders and drops (no pipes or devices); web links dropped on the window are ignored.
+- Reading a file's details times out after 60 s; captured ffmpeg output is capped at 1 MB per stream.
+- ffmpeg and ffprobe are limited to the `file` protocol.
+- Quitting during a batch now stops ffmpeg and deletes its temporary files.
+- Release workflow: actions pinned to commit SHAs, build job is read-only, release job alone can write, and the
+  bundled ffmpeg is re-verified on every run (including cache hits).
+
 ## 1.0 — 2026-10-05
 
 First release.

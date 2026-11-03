@@ -33,6 +33,8 @@ final class ConversionQueue {
 
     /// Adds files; folders are scanned (including subfolders) for audio files.
     func add(_ urls: [URL]) {
+        let urls = urls.filter(\.isFileURL)   // a dropped web link has no file on disk
+        guard !urls.isEmpty else { return }
         Task {
             let found = await Task.detached { Self.collectAudioFiles(in: urls) }.value
             let existing = Set(items.map { $0.url.standardizedFileURL.path })
@@ -74,14 +76,19 @@ final class ConversionQueue {
                                            options: [.skipsHiddenFiles, .skipsPackageDescendants])
                 var inFolder: [URL] = []
                 while let file = walker?.nextObject() as? URL {
-                    if isAudioFile(file) { inFolder.append(file) }
+                    if isAudioFile(file) && isRegularFile(file) { inFolder.append(file) }
                 }
                 result += inFolder.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-            } else if isAudioFile(url) {
+            } else if isAudioFile(url) && isRegularFile(url) {
                 result.append(url)
             }
         }
         return result
+    }
+
+    /// Pipes, devices and sockets named like audio files would hang the probe; links are followed.
+    nonisolated private static func isRegularFile(_ url: URL) -> Bool {
+        (try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
     }
 
     nonisolated private static func isAudioFile(_ url: URL) -> Bool {
@@ -201,8 +208,10 @@ final class ConversionQueue {
             let existsOnDisk = fm.fileExists(atPath: output.path)
             if existsOnDisk { conflictsLeft -= 1 }
 
-            if claimed.contains(key(output)) {
-                // Another file in this batch already uses this name: number it automatically.
+            if claimed.contains(key(output))
+                || (existsOnDisk && toConvert.contains { ConversionPlan.isSameFile(output, $0.url) }) {
+                // Another file in this batch already uses this name, or the name is one of the files being
+                // converted (e.g. "Song.MP3" → "Song.mp3" on a case-insensitive disk): number it automatically.
                 output = ConversionPlan.numberedURL(for: output, source: item.url) { claimed.contains(key($0)) }
             } else if existsOnDisk {
                 let choice: RunQuestions.ConflictChoice
@@ -243,6 +252,8 @@ final class ConversionQueue {
         // Write to a hidden temporary file first so a failed run never leaves a broken file behind.
         let temp = job.output.deletingLastPathComponent()
             .appendingPathComponent(".travaso-\(UUID().uuidString).\(settings.format.fileExtension)")
+        ActiveWork.shared.addTemp(temp)
+        defer { ActiveWork.shared.removeTemp(temp) }
         let args = ConversionPlan.arguments(input: item.url, output: temp, info: info,
                                             settings: settings, stereo: job.stereo)
 
