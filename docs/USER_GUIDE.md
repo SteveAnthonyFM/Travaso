@@ -63,9 +63,9 @@ order, so nothing pops up in the middle of a batch:
 - **Convert to Stereo**: the same sound in both left and right.
 
 **Existing files** — *"song.mp3" already exists in "Music".*
-- **Overwrite** (default): replace the existing file.
+- **Keep Both** (default, Return key): save the new file as `song 1.mp3` (or the next free number).
 - **Skip**: don't convert this file (ring shows *Skipped*).
-- **Keep Both**: save the new file as `song 1.mp3` (or the next free number).
+- **Overwrite**: replace the existing file. (Never offered for a file that is itself being converted.)
 
 Tick **Apply to all** to use the same answer for the rest of that run. The next Convert asks again.
 

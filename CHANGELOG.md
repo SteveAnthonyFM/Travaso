@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — security hardening
+## 1.0.1 — 2026-11-03
+
+Security hardening and a data-safety fix, from a full security audit (no exploitable vulnerabilities were found).
 
 - Fixed: converting `Song.MP3` to MP3 on a case-insensitive disk could offer to overwrite the original itself. Source
   files are now recognised by file identity, and an output name that matches any file in the batch is numbered.
