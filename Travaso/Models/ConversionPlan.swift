@@ -29,12 +29,23 @@ enum ConversionPlan {
         }
     }
 
+    /// True when both URLs name the same file on disk. Compares file identity when both exist (so
+    /// "Song.MP3" and "Song.mp3" on a case-insensitive volume, links and aliases all match),
+    /// and falls back to the standardized path otherwise.
+    static func isSameFile(_ a: URL, _ b: URL) -> Bool {
+        if a.standardizedFileURL.path == b.standardizedFileURL.path { return true }
+        let keys: Set<URLResourceKey> = [.fileResourceIdentifierKey]
+        guard let ida = try? a.resourceValues(forKeys: keys).fileResourceIdentifier,
+              let idb = try? b.resourceValues(forKeys: keys).fileResourceIdentifier else { return false }
+        return ida.isEqual(idb)
+    }
+
     /// Output file next to the source (or in `folder`), never the source file itself.
     static func outputURL(for source: URL, format: OutputFormat, folder: URL? = nil) -> URL {
         let dir = folder ?? source.deletingLastPathComponent()
         let stem = source.deletingPathExtension().lastPathComponent
         var url = dir.appendingPathComponent(stem).appendingPathExtension(format.fileExtension)
-        if url.standardizedFileURL.path == source.standardizedFileURL.path {
+        if isSameFile(url, source) {
             url = dir.appendingPathComponent("\(stem) 1").appendingPathExtension(format.fileExtension)
         }
         return url
@@ -49,7 +60,7 @@ enum ConversionPlan {
         while true {
             let candidate = dir.appendingPathComponent("\(stem) \(n)").appendingPathExtension(ext)
             if !FileManager.default.fileExists(atPath: candidate.path),
-               candidate.standardizedFileURL.path != source.standardizedFileURL.path,
+               !isSameFile(candidate, source),
                !taken(candidate) {
                 return candidate
             }
@@ -99,7 +110,8 @@ enum ConversionPlan {
 
     /// Estimated output size in bytes; `approximate` is true when it's a rough guess.
     static func estimatedSize(info: AudioInfo, settings: ConversionSettings) -> (bytes: Int64, approximate: Bool) {
-        let seconds = max(info.duration, 0)
+        // Cap at ~100 years so a bogus duration in a damaged or hostile file can't overflow the maths below.
+        let seconds = info.duration.isFinite ? min(max(info.duration, 0), 3_153_600_000) : 0
         if !settings.format.isLossless {
             return (Int64(Double(bitRate(settings)) / 8 * seconds), true)
         }

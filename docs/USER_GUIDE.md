@@ -73,7 +73,8 @@ Then up to 4 files convert at once. The bottom bar shows a summary, e.g. *8 conv
 Click **Stop** to cancel; unfinished files return to *Ready* and no partial files are left behind.
 
 Automatic protections:
-- The original file is never overwritten. (MP3 → MP3 in the same folder saves as `song 1.mp3`.)
+- The original file is never overwritten. (MP3 → MP3 in the same folder saves as `song 1.mp3`, including when the
+  capitalisation differs, such as `Song.MP3` → `Song 1.mp3`.)
 - If two files in one batch would get the same output name (e.g. `song.wav` and `song.flac` → `song.mp3`),
   the second is numbered automatically.
 - Each file is written to a hidden temporary file first and only moved into place when complete.

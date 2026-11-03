@@ -21,14 +21,14 @@ enum RunQuestions {
         alert.alertStyle = .warning
         alert.messageText = "“\(fileName)” already exists in “\(folderName)”."
         alert.informativeText = "Overwrite it, skip this file, or keep both (the new file gets a number)?"
-        alert.addButton(withTitle: "Overwrite")          // default (Return)
+        alert.addButton(withTitle: "Keep Both")          // default (Return): the safe choice
         alert.addButton(withTitle: "Skip")
-        alert.addButton(withTitle: "Keep Both")
+        alert.addButton(withTitle: "Overwrite")
         let (response, all) = await present(alert, applyToAll: showApplyToAll)
         switch response {
         case .alertSecondButtonReturn: return (.skip, all)
-        case .alertThirdButtonReturn:  return (.keepBoth, all)
-        default:                       return (.overwrite, all)
+        case .alertThirdButtonReturn:  return (.overwrite, all)
+        default:                       return (.keepBoth, all)
         }
     }
 

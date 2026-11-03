@@ -71,7 +71,7 @@ You drag files (or whole folders) onto the window, choose a format in the menu a
 
 1. Download `Travaso-<version>.dmg` from the [latest release](https://github.com/SteveAnthonyFM/Travaso/releases/latest).
 2. Open it and drag **Travaso** to **Applications**.
-3. The first time, **right-click Travaso and choose Open** (the app isn't notarized yet, so macOS asks once).
+3. The first time, macOS will refuse to open it because the app isn't notarized yet. Open **System Settings ▸ Privacy & Security**, scroll to the message about Travaso and click **Open Anyway** (older macOS versions let you right-click Travaso and choose **Open** instead).
 
 Requires an Apple Silicon Mac running macOS 26 or later.
 
