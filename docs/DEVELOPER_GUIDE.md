@@ -33,7 +33,8 @@ Travaso/
   TravasoApp.swift            App entry, window, ⌘O command, forces dark appearance
   ContentView.swift           Window layout, drag-and-drop target, reads settings (@AppStorage)
   Theme.swift                 All colors, fonts and sizes
-  FFmpeg.swift                Runs bundled ffprobe/ffmpeg; probe(), convert() with progress and cancellation
+  FFmpeg.swift                Runs bundled ffprobe/ffmpeg; probe(), convert() with progress, cancellation, timeout,
+                              capped output buffers; ActiveWork cleans up on quit
   Models/
     OutputFormat.swift        The 7 output formats (name, extension, lossless?, max sample rate)
     ConversionSettings.swift  Quality, keep rate/depth, output folder
@@ -58,18 +59,22 @@ docs/                         Documentation
 
 ## How a conversion works
 
-1. **Adding:** `ConversionQueue.add` scans folders off the main thread (by extension, plus a UTType audio check),
-   skips duplicates, then runs `FFmpeg.probe` (ffprobe JSON) 8 at a time to read duration, channels, sample rate,
+1. **Adding:** `ConversionQueue.add` ignores non-file URLs, scans folders off the main thread (by extension, plus a
+   UTType audio check, regular files only), skips duplicates, then runs `FFmpeg.probe` (ffprobe JSON) 8 at a time to read duration, channels, sample rate,
    bit depth and codec.
 2. **Pre-flight** (`ConversionQueue.askQuestions`), in list order, before anything converts:
    - mono sources → Keep Mono / Convert to Stereo (with Apply to all);
-   - output already on disk → Overwrite / Skip / Keep Both (with Apply to all);
-   - output already claimed by an earlier file in the run → automatically numbered.
+   - output already on disk → Keep Both (default) / Skip / Overwrite (with Apply to all);
+   - output already claimed by an earlier file in the run, or equal to any file being converted (compared by file
+     identity, so `Song.MP3` → `Song.mp3` counts) → automatically numbered.
 3. **Batch:** a task group runs up to `maxParallel = 4` conversions. Each writes to a hidden
    `.travaso-<UUID>.<ext>` temp file next to the destination, then `replaceItemAt` moves it into place.
 4. **Progress:** ffmpeg runs with `-progress pipe:1`; `out_time_us` ÷ duration drives the ring.
 5. **Stop:** cancelling the run task terminates running ffmpeg processes (`withTaskCancellationHandler`);
    temp files are removed and rows return to Ready.
+
+Both tools always run with `-protocol_whitelist file`; numbers read from ffprobe are range-checked (`whole()`,
+`estimatedSize` caps the duration) so a damaged file can't crash the app.
 
 FFmpeg arguments (`ConversionPlan.arguments`) always include `-map 0:a:0 -vn` (first audio stream, no
 album art), `-map_metadata 0` (tags), and `-af aresample=filter_size=64` (high-quality resampling, plus
@@ -112,6 +117,23 @@ There is no automated test target. Verification used during development:
   size estimates with ffprobe.
 - Manual tests with a folder of varied files: 24-bit stereo WAV, mono AIFF, MP3, 96 kHz FLAC, 6-channel WAV,
   a broken file and a non-audio file, across subfolders.
+
+## Releasing
+
+1. Bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `Travaso.xcodeproj`, then update `CHANGELOG.md` and
+   `RELEASE_NOTES.md`, and merge to `main`.
+2. Tag the merge commit and push the tag: `git tag v1.0.1 && git push origin v1.0.1`.
+3. `.github/workflows/release.yml` builds ffmpeg (cached), re-verifies it, builds the app, packages the DMG, and
+   its separate `release` job creates a **draft** GitHub release (the only job with write access).
+4. Check the draft (download the DMG, open it), then publish it on GitHub.
+
+Actions in the workflow are pinned to commit SHAs. To update one, look up the new SHA (for example
+`gh api repos/actions/checkout/commits/v4 --jq .sha`), replace it, and keep the `# vN` comment in step.
+
+## Security
+
+See `SECURITY.md` for reporting. The app is deliberately not sandboxed (see Building); the hardening that stands in
+for it is described under "How a conversion works". A 2026-11 audit found no exploitable vulnerabilities.
 
 ## Known limitations
 
